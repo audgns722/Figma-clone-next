@@ -25,64 +25,62 @@ type Props = {
 };
 
 export const NewThread = ({ children }: Props) => {
-  // set state to track if we're placing a new comment or not
+  // 새로운 코멘트를 배치하는 상태를 추적합니다.
   const [creatingCommentState, setCreatingCommentState] = useState<
     "placing" | "placed" | "complete"
   >("complete");
 
   /**
-   * We're using the useCreateThread hook to create a new thread.
-   *
-   * useCreateThread: https://liveblocks.io/docs/api-reference/liveblocks-react#useCreateThread
+   * 새로운 스레드를 생성하기 위해 useCreateThread 후크를 사용합니다.
    */
   const createThread = useCreateThread();
 
-  // get the max z-index of a thread
+  // 스레드의 최대 z-index를 가져옵니다.
   const maxZIndex = useMaxZIndex();
 
-  // set state to track the coordinates of the composer (liveblocks comment editor)
+  // 코멘트 에디터(라이브블록스 코멘트 에디터)의 좌표를 추적하기 위한 상태 설정
   const [composerCoords, setComposerCoords] = useState<ComposerCoords>(null);
 
-  // set state to track the last pointer event
+  // 마지막 포인터 이벤트를 추적하기 위한 상태 설정
   const lastPointerEvent = useRef<PointerEvent>();
 
-  // set state to track if user is allowed to use the composer
+  // 사용자가 코멘트 에디터를 사용할 수 있는지 여부를 추적하기 위한 상태 설정
   const [allowUseComposer, setAllowUseComposer] = useState(false);
   const allowComposerRef = useRef(allowUseComposer);
   allowComposerRef.current = allowUseComposer;
 
   useEffect(() => {
-    // If composer is already placed, don't do anything
+    // 코멘트가 이미 배치되었다면 아무 것도 하지 않습니다.
     if (creatingCommentState === "complete") {
       return;
     }
 
-    // Place a composer on the screen
+    // 화면에 코멘트를 배치합니다.
     const newComment = (e: MouseEvent) => {
       e.preventDefault();
 
-      // If already placed, click outside to close composer
+      // 이미 배치되었다면, 외부 클릭으로 코멘트 에디터를 닫습니다.
       if (creatingCommentState === "placed") {
-        // check if the click event is on/inside the composer
+        // 클릭 이벤트가 코멘트 에디터 위/내부에서 발생했는지 확인합니다.
         const isClickOnComposer = ((e as any)._savedComposedPath = e
           .composedPath()
           .some((el: any) => {
             return el.classList?.contains("lb-composer-editor-actions");
           }));
 
-        // if click is inisde/on composer, don't do anything
+        // 클릭이 코멘트 에디터 내부에서 발생했다면 아무 것도 하지 않습니다.
         if (isClickOnComposer) {
           return;
         }
 
-        // if click is outside composer, close composer
+        // 클릭이 코멘트 에디터 외부에서 발생했다면 코멘트 에디터를 닫습니다.
         if (!isClickOnComposer) {
           setCreatingCommentState("complete");
           return;
         }
       }
 
-      // First click sets composer down
+      // 첫 클릭으로 코멘트 에디터를 배치합니다.
       setCreatingCommentState("placed");
       setComposerCoords({
         x: e.clientX,
@@ -98,9 +96,9 @@ export const NewThread = ({ children }: Props) => {
   }, [creatingCommentState]);
 
   useEffect(() => {
-    // If dragging composer, update position
+    // 코멘트 에디터를 드래그하면 위치를 업데이트합니다.
     const handlePointerMove = (e: PointerEvent) => {
-      // Prevents issue with composedPath getting removed
+      // composedPath가 제거되는 문제를 방지합니다.
       (e as any)._savedComposedPath = e.composedPath();
       lastPointerEvent.current = e;
     };
@@ -115,25 +113,25 @@ export const NewThread = ({ children }: Props) => {
     };
   }, []);
 
-  // Set pointer event from last click on body for use later
+  // 바디에서 마지막 클릭의 포인터 이벤트를 나중에 사용하기 위해 설정합니다.
   useEffect(() => {
     if (creatingCommentState !== "placing") {
       return;
     }
 
     const handlePointerDown = (e: PointerEvent) => {
-      // if composer is already placed, don't do anything
+      // 코멘트 에디터가 이미 배치되었다면 아무 것도 하지 않습니다.
       if (allowComposerRef.current) {
         return;
       }
 
-      // Prevents issue with composedPath getting removed
+      // composedPath가 제거되는 문제를 방지합니다.
       (e as any)._savedComposedPath = e.composedPath();
       lastPointerEvent.current = e;
       setAllowUseComposer(true);
     };
 
-    // Right click to cancel placing
+    // 오른쪽 클릭으로 배치 취소
     const handleContextMenu = (e: Event) => {
       if (creatingCommentState === "placing") {
         e.preventDefault();
@@ -156,26 +154,26 @@ export const NewThread = ({ children }: Props) => {
     };
   }, [creatingCommentState]);
 
-  // On composer submit, create thread and reset state
+  // 코멘트 제출 시, 스레드 생성 및 상태 초기화
   const handleComposerSubmit = useCallback(
     ({ body }: ComposerSubmitComment, event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
       event.stopPropagation();
 
-      // Get your canvas element
+      // 캔버스 요소를 가져옵니다.
       const overlayPanel = document.querySelector("#canvas");
 
-      // if there's no composer coords or last pointer event, meaning the user hasn't clicked yet, don't do anything
+      // 코멘트 좌표나 마지막 포인터 이벤트가 없거나, 오버레이 패널이 없다면, 즉 사용자가 아직 클릭하지 않았다면 아무 것도 하지 않습니다.
       if (!composerCoords || !lastPointerEvent.current || !overlayPanel) {
         return;
       }
 
-      // Set coords relative to the top left of your canvas
+      // 캔버스의 왼쪽 상단을 기준으로 좌표를 설정합니다.
       const { top, left } = overlayPanel.getBoundingClientRect();
       const x = composerCoords.x - left;
       const y = composerCoords.y - top;
 
-      // create a new thread with the composer coords and cursor selectors
+      // 코멘트 좌표와 커서 선택자를 사용하여 새 스레드를 생성합니다.
       createThread({
         body,
         metadata: {
@@ -196,13 +194,9 @@ export const NewThread = ({ children }: Props) => {
   return (
     <>
       {/**
-       * Slot is used to wrap the children of the NewThread component
-       * to allow us to add a click event listener to the children
+       * NewThread 컴포넌트의 자식들에 클릭 이벤트 리스너를 추가하기 위해 Slot을 사용합니다.
        *
        * Slot: https://www.radix-ui.com/primitives/docs/utilities/slot
-       *
-       * Disclaimer: We don't have to download this package specifically,
-       * it's already included when we install Shadcn
        */}
       <Slot
         onClick={() =>
@@ -215,10 +209,10 @@ export const NewThread = ({ children }: Props) => {
         {children}
       </Slot>
 
-      {/* if composer coords exist and we're placing a comment, render the composer */}
+      {/* 코멘트 좌표가 있고 코멘트를 배치하는 상태라면 코멘트 에디터를 렌더링합니다. */}
       {composerCoords && creatingCommentState === "placed" ? (
         /**
-         * Portal.Root is used to render the composer outside of the NewThread component to avoid z-index issuess
+         * 코멘트 에디터를 NewThread 컴포넌트 외부에 렌더링하기 위해 Portal.Root를 사용합니다. 이는 z-index 문제를 피하기 위함입니다.
          *
          * Portal.Root: https://www.radix-ui.com/primitives/docs/utilities/portal
          */
@@ -234,7 +228,7 @@ export const NewThread = ({ children }: Props) => {
         </Portal.Root>
       ) : null}
 
-      {/* Show the customizing cursor when placing a comment. The one with comment shape */}
+      {/* 코멘트를 배치하는 동안 사용자 정의 커서를 표시합니다. */}
       <NewThreadCursor display={creatingCommentState === "placing"} />
     </>
   );

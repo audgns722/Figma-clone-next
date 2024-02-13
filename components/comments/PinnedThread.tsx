@@ -13,7 +13,7 @@ type Props = {
 };
 
 export const PinnedThread = ({ thread, onFocus, ...props }: Props) => {
-  // Open pinned threads that have just been created
+  // 방금 생성된 고정 스레드가 열려 있도록 합니다.
   const startMinimized = useMemo(
     () => Number(new Date()) - Number(new Date(thread.createdAt)) > 100,
     [thread]
@@ -22,12 +22,12 @@ export const PinnedThread = ({ thread, onFocus, ...props }: Props) => {
   const [minimized, setMinimized] = useState(startMinimized);
 
   /**
-   * memoize the result of this function so that it doesn't change on every render but only when the thread changes
-   * Memo is used to optimize performance and avoid unnecessary re-renders.
+   * 스레드가 변경될 때만 변경되도록 이 함수의 결과를 메모이제이션하여
+   * 매 렌더링마다 변경되지 않도록 합니다.
+   * useMemo는 성능 최적화를 위해 사용되며, 불필요한 리렌더링을 방지합니다.
    *
    * useMemo: https://react.dev/reference/react/useMemo
    */
-
   const memoizedContent = useMemo(
     () => (
       <div
@@ -36,7 +36,7 @@ export const PinnedThread = ({ thread, onFocus, ...props }: Props) => {
         onClick={(e: any) => {
           onFocus(thread.id);
 
-          // check if click is on/in the composer
+          // 클릭이 작성기 위/내에서 발생했는지 확인합니다.
           if (
             e.target &&
             e.target.classList.contains("lb-icon") &&

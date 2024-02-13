@@ -2,14 +2,29 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { useBroadcastEvent, useEventListener, useMyPresence, useOthers } from "@/liveblocks.config";
+import {
+  useBroadcastEvent,
+  useEventListener,
+  useMyPresence,
+  useOthers,
+} from "@/liveblocks.config";
 import useInterval from "@/hooks/useInterval";
 import { CursorMode, CursorState, Reaction, ReactionEvent } from "@/types/type";
 import { shortcuts } from "@/constants";
 
 import { Comments } from "./comments/Comments";
-import { CursorChat, FlyingReaction, LiveCursors, ReactionSelector } from "./index";
-import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "./ui/context-menu";
+import {
+  CursorChat,
+  FlyingReaction,
+  LiveCursors,
+  ReactionSelector,
+} from "./index";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "./ui/context-menu";
 
 type Props = {
   canvasRef: React.MutableRefObject<HTMLCanvasElement | null>;
@@ -18,50 +33,42 @@ type Props = {
 };
 
 const Live = ({ canvasRef, undo, redo }: Props) => {
-  /**
-   * useOthers returns the list of other users in the room.
-   *
-   * useOthers: https://liveblocks.io/docs/api-reference/liveblocks-react#useOthers
-   */
+  // 다른 사용자 목록을 방에서 반환합니다.
   const others = useOthers();
 
-  /**
-   * useMyPresence returns the presence of the current user in the room.
-   * It also returns a function to update the presence of the current user.
-   *
-   * useMyPresence: https://liveblocks.io/docs/api-reference/liveblocks-react#useMyPresence
-   */
+  // 현재 사용자의 존재와 현재 사용자의 존재를 업데이트하는 함수를 반환합니다.
   const [{ cursor }, updateMyPresence] = useMyPresence() as any;
 
-  /**
-   * useBroadcastEvent is used to broadcast an event to all the other users in the room.
-   *
-   * useBroadcastEvent: https://liveblocks.io/docs/api-reference/liveblocks-react#useBroadcastEvent
-   */
+  // 방에 있는 모든 다른 사용자에게 이벤트를 방송하는 데 사용됩니다.
   const broadcast = useBroadcastEvent();
 
-  // store the reactions created on mouse click
+  // 마우스 클릭 시 생성된 반응을 저장합니다.
   const [reactions, setReactions] = useState<Reaction[]>([]);
 
-  // track the state of the cursor (hidden, chat, reaction, reaction selector)
+  // 커서 상태(숨김, 채팅, 반응, 반응 선택기)를 추적합니다.
   const [cursorState, setCursorState] = useState<CursorState>({
     mode: CursorMode.Hidden,
   });
 
-  // set the reaction of the cursor
+  // 커서의 반응을 설정합니다.
   const setReaction = useCallback((reaction: string) => {
     setCursorState({ mode: CursorMode.Reaction, reaction, isPressed: false });
   }, []);
 
-  // Remove reactions that are not visible anymore (every 1 sec)
+  // 더 이상 보이지 않는 반응을 제거합니다(매 1초마다).
   useInterval(() => {
-    setReactions((reactions) => reactions.filter((reaction) => reaction.timestamp > Date.now() - 4000));
+    setReactions((reactions) =>
+      reactions.filter((reaction) => reaction.timestamp > Date.now() - 4000)
+    );
   }, 1000);
 
-  // Broadcast the reaction to other users (every 100ms)
+  // 다른 사용자에게 반응을 방송합니다(매 100ms마다).
   useInterval(() => {
-    if (cursorState.mode === CursorMode.Reaction && cursorState.isPressed && cursor) {
-      // concat all the reactions created on mouse click
+    if (
+      cursorState.mode === CursorMode.Reaction &&
+      cursorState.isPressed &&
+      cursor
+    ) {
       setReactions((reactions) =>
         reactions.concat([
           {
@@ -72,7 +79,6 @@ const Live = ({ canvasRef, undo, redo }: Props) => {
         ])
       );
 
-      // Broadcast the reaction to other users
       broadcast({
         x: cursor.x,
         y: cursor.y,
@@ -81,12 +87,7 @@ const Live = ({ canvasRef, undo, redo }: Props) => {
     }
   }, 100);
 
-  /**
-   * useEventListener is used to listen to events broadcasted by other
-   * users.
-   *
-   * useEventListener: https://liveblocks.io/docs/api-reference/liveblocks-react#useEventListener
-   */
+  // 다른 사용자가 방송한 이벤트를 수신하기 위해 사용됩니다.
   useEventListener((eventData) => {
     const event = eventData.event as ReactionEvent;
     setReactions((reactions) =>
@@ -100,7 +101,7 @@ const Live = ({ canvasRef, undo, redo }: Props) => {
     );
   });
 
-  // Listen to keyboard events to change the cursor state
+  // 키보드 이벤트를 수신하여 커서 상태를 변경합니다.
   useEffect(() => {
     const onKeyUp = (e: KeyboardEvent) => {
       if (e.key === "/") {
@@ -132,17 +133,14 @@ const Live = ({ canvasRef, undo, redo }: Props) => {
     };
   }, [updateMyPresence]);
 
-  // Listen to mouse events to change the cursor state
+  // 마우스 이벤트를 수신하여 커서 상태를 변경합니다.
   const handlePointerMove = useCallback((event: React.PointerEvent) => {
     event.preventDefault();
 
-    // if cursor is not in reaction selector mode, update the cursor position
     if (cursor == null || cursorState.mode !== CursorMode.ReactionSelector) {
-      // get the cursor position in the canvas
       const x = event.clientX - event.currentTarget.getBoundingClientRect().x;
       const y = event.clientY - event.currentTarget.getBoundingClientRect().y;
 
-      // broadcast the cursor position to other users
       updateMyPresence({
         cursor: {
           x,
@@ -152,7 +150,7 @@ const Live = ({ canvasRef, undo, redo }: Props) => {
     }
   }, []);
 
-  // Hide the cursor when the mouse leaves the canvas
+  // 마우스가 캔버스를 벗어나면 커서를 숨깁니다.
   const handlePointerLeave = useCallback(() => {
     setCursorState({
       mode: CursorMode.Hidden,
@@ -163,10 +161,9 @@ const Live = ({ canvasRef, undo, redo }: Props) => {
     });
   }, []);
 
-  // Show the cursor when the mouse enters the canvas
+  // 마우스가 캔버스 위에 있을 때 커서를 표시합니다.
   const handlePointerDown = useCallback(
     (event: React.PointerEvent) => {
-      // get the cursor position in the canvas
       const x = event.clientX - event.currentTarget.getBoundingClientRect().x;
       const y = event.clientY - event.currentTarget.getBoundingClientRect().y;
 
@@ -179,20 +176,24 @@ const Live = ({ canvasRef, undo, redo }: Props) => {
 
       // if cursor is in reaction mode, set isPressed to true
       setCursorState((state: CursorState) =>
-        cursorState.mode === CursorMode.Reaction ? { ...state, isPressed: true } : state
+        cursorState.mode === CursorMode.Reaction
+          ? { ...state, isPressed: true }
+          : state
       );
     },
     [cursorState.mode, setCursorState]
   );
 
-  // hide the cursor when the mouse is up
+  // 마우스를 뗄 때 커서를 숨깁니다.
   const handlePointerUp = useCallback(() => {
     setCursorState((state: CursorState) =>
-      cursorState.mode === CursorMode.Reaction ? { ...state, isPressed: false } : state
+      cursorState.mode === CursorMode.Reaction
+        ? { ...state, isPressed: false }
+        : state
     );
   }, [cursorState.mode, setCursorState]);
 
-  // trigger respective actions when the user clicks on the right menu
+  // 사용자가 컨텍스트 메뉴에서 특정 항목을 클릭할 때 해당 동작을 트리거합니다.
   const handleContextMenuClick = useCallback((key: string) => {
     switch (key) {
       case "Chat":
@@ -202,19 +203,15 @@ const Live = ({ canvasRef, undo, redo }: Props) => {
           message: "",
         });
         break;
-
       case "Reactions":
         setCursorState({ mode: CursorMode.ReactionSelector });
         break;
-
       case "Undo":
         undo();
         break;
-
       case "Redo":
         redo();
         break;
-
       default:
         break;
     }
@@ -223,8 +220,8 @@ const Live = ({ canvasRef, undo, redo }: Props) => {
   return (
     <ContextMenu>
       <ContextMenuTrigger
-        className="relative flex h-full w-full flex-1 items-center justify-center"
-        id="canvas"
+        className='relative flex h-full w-full flex-1 items-center justify-center'
+        id='canvas'
         style={{
           cursor: cursorState.mode === CursorMode.Chat ? "none" : "auto",
         }}
@@ -246,7 +243,7 @@ const Live = ({ canvasRef, undo, redo }: Props) => {
           />
         ))}
 
-        {/* If cursor is in chat mode, show the chat cursor */}
+        {/* 커서가 채팅 모드에 있으면 채팅 커서를 표시합니다. */}
         {cursor && (
           <CursorChat
             cursor={cursor}
@@ -256,7 +253,7 @@ const Live = ({ canvasRef, undo, redo }: Props) => {
           />
         )}
 
-        {/* If cursor is in reaction selector mode, show the reaction selector */}
+        {/* 커서가 반응 선택기 모드에 있으면 반응 선택기를 표시합니다. */}
         {cursorState.mode === CursorMode.ReactionSelector && (
           <ReactionSelector
             setReaction={(reaction) => {
@@ -265,22 +262,22 @@ const Live = ({ canvasRef, undo, redo }: Props) => {
           />
         )}
 
-        {/* Show the live cursors of other users */}
+        {/* 다른 사용자의 라이브 커서를 표시합니다. */}
         <LiveCursors others={others} />
 
-        {/* Show the comments */}
+        {/* 코멘트를 표시합니다. */}
         <Comments />
       </ContextMenuTrigger>
 
-      <ContextMenuContent className="right-menu-content">
+      <ContextMenuContent className='right-menu-content'>
         {shortcuts.map((item) => (
           <ContextMenuItem
             key={item.key}
-            className="right-menu-item"
+            className='right-menu-item'
             onClick={() => handleContextMenuClick(item.name)}
           >
             <p>{item.name}</p>
-            <p className="text-xs text-primary-grey-300">{item.shortcut}</p>
+            <p className='text-xs text-primary-grey-300'>{item.shortcut}</p>
           </ContextMenuItem>
         ))}
       </ContextMenuContent>
